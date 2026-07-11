@@ -15,10 +15,20 @@ const OWNER_SELECT = "*, owner:owners(id,name,role)";
 
 export async function getProjects(): Promise<Project[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Anonymous visitors see the public demo (user_id null); signed-in users see
+  // only their own projects. RLS enforces the same at the DB level.
+  let query = supabase
     .from("projects")
     .select("*")
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
+  query = user ? query.eq("user_id", user.id) : query.is("user_id", null);
+
+  const { data, error } = await query;
   if (error) throw error;
   return data ?? [];
 }

@@ -4,8 +4,10 @@ import { getProjects, getProject } from "@/lib/db";
 import { ProjectSwitcher } from "@/components/ProjectSwitcher";
 import { WorkspaceNav } from "@/components/WorkspaceNav";
 import { RecordDialog, btnGhost } from "@/components/RecordDialog";
+import { UserMenu } from "@/components/UserMenu";
 import { projectFields } from "@/components/fields";
 import { createProject } from "@/app/actions";
+import { getUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +19,10 @@ export default async function ProjectLayout({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  const [projects, project] = await Promise.all([
+  const [projects, project, user] = await Promise.all([
     getProjects(),
     getProject(projectId),
+    getUser(),
   ]);
 
   if (!project) notFound();
@@ -40,9 +43,11 @@ export default async function ProjectLayout({
             currentId={project.id}
           />
           <div className="ml-auto flex items-center gap-2">
-            <span className="hidden rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200 sm:inline dark:bg-emerald-950 dark:text-emerald-300 dark:ring-emerald-900">
-              Demo · no login
-            </span>
+            {!user && (
+              <span className="hidden rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200 sm:inline dark:bg-emerald-950 dark:text-emerald-300 dark:ring-emerald-900">
+                Demo · no login
+              </span>
+            )}
             <RecordDialog
               action={createProject}
               fields={projectFields()}
@@ -52,6 +57,7 @@ export default async function ProjectLayout({
               triggerClassName={btnGhost}
               submitLabel="Create project"
             />
+            <UserMenu email={user?.email ?? null} />
           </div>
         </div>
         <div className="mx-auto max-w-6xl px-4 sm:px-6">

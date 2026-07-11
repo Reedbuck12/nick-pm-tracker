@@ -30,6 +30,16 @@ function nullable(fd: FormData, key: string): string | null {
   return v === "" ? null : v;
 }
 
+// Current user id, or null for anonymous demo visitors. New rows are stamped
+// with this so RLS scopes them to the owner (null rows stay public/demo).
+async function currentUserId(): Promise<string | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user?.id ?? null;
+}
+
 async function logActivity(
   projectId: string,
   action: "created" | "updated" | "deleted",
@@ -39,8 +49,12 @@ async function logActivity(
   actor = "You",
 ) {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   await supabase.from("activity_logs").insert({
     project_id: projectId,
+    user_id: user?.id ?? null,
     actor_name: actor,
     action,
     object_type: objectType,
@@ -70,6 +84,7 @@ export async function createProject(
   const { data, error } = await supabase
     .from("projects")
     .insert({
+      user_id: await currentUserId(),
       name,
       description: nullable(fd, "description"),
       status: str(fd, "status") || "active",
@@ -97,6 +112,7 @@ export async function createOwner(
   const supabase = await createClient();
   const { error } = await supabase.from("owners").insert({
     project_id: projectId,
+    user_id: await currentUserId(),
     name,
     role: nullable(fd, "role"),
     email: nullable(fd, "email"),
@@ -156,6 +172,7 @@ export async function createTask(
   const supabase = await createClient();
   const { error } = await supabase.from("tasks").insert({
     project_id: projectId,
+    user_id: await currentUserId(),
     title,
     description: nullable(fd, "description"),
     status: (str(fd, "status") as TaskStatus) || "not_started",
@@ -224,6 +241,7 @@ export async function createDeliverable(
   const supabase = await createClient();
   const { error } = await supabase.from("deliverables").insert({
     project_id: projectId,
+    user_id: await currentUserId(),
     title,
     description: nullable(fd, "description"),
     status: (str(fd, "status") as TaskStatus) || "not_started",
@@ -293,6 +311,7 @@ export async function createRisk(
   const supabase = await createClient();
   const { error } = await supabase.from("risks").insert({
     project_id: projectId,
+    user_id: await currentUserId(),
     title,
     description: nullable(fd, "description"),
     likelihood,
@@ -375,6 +394,7 @@ export async function createIssue(
   const supabase = await createClient();
   const { error } = await supabase.from("issues").insert({
     project_id: projectId,
+    user_id: await currentUserId(),
     title,
     description: nullable(fd, "description"),
     severity: str(fd, "severity") || "medium",
